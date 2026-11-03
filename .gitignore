@@ -4,3 +4,6 @@ images/posts/*.pdf
 images/posts/*.sty
 _source/*_cache
 .Rproj.user
+vendor/
+.bundle/
+.jekyll-metadata

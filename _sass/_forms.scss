@@ -379,7 +379,7 @@ select:focus {
   display: inline-block;
   font-size: $type-size-6;
   background-color: #fff;
-  color: #000;
+  color: $text-color;
   border-width: 2px !important;
   border-style: solid !important;
   border-color: lighten(#000,50);
