@@ -15,4 +15,4 @@ author_profile: true
   {% include archive-single.html %}
 {% endfor %}
 
-<p>* Denotes equal contributions <\p>
+<p>* Denotes equal contributions </p>
