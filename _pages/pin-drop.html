@@ -1,0 +1,299 @@
+---
+layout: null
+permalink: /pin-drop/
+sitemap: false
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Pin Drop</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --card: #ffffff;
+    --ink: #1d1b18;
+    --muted: #6f6a61;
+    --line: #e2ddd2;
+    --accent: #e4572e;
+    --accent-ink: #ffffff;
+    --truth: #2a9d8f;
+    --good: #2a9d8f;
+    --mid: #e9c46a;
+    --bad: #e4572e;
+    --shadow: 0 8px 30px rgba(29, 27, 24, .14);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15171a;
+      --card: #1f2226;
+      --ink: #f1eee8;
+      --muted: #9a958c;
+      --line: #2f3338;
+      --shadow: 0 8px 30px rgba(0, 0, 0, .45);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font-family: "Space Grotesk", system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+  #app { position: fixed; inset: 0; display: flex; flex-direction: column; }
+
+  header { display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--bg); z-index: 2; }
+  .brand { font-weight: 700; font-size: 20px; letter-spacing: -.02em; display: flex; align-items: center; gap: 8px; }
+  .brand svg { width: 20px; height: 20px; }
+  .score-pill { font-weight: 700; font-variant-numeric: tabular-nums; background: var(--card);
+    border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 14px; }
+
+  .progress { display: flex; gap: 6px; justify-content: center; padding: 10px 16px 0; position: absolute;
+    top: 0; left: 0; right: 0; z-index: 500; pointer-events: none; }
+  .progress span { width: 34px; height: 6px; border-radius: 3px; background: rgba(120,115,105,.3); }
+  .progress span.done { background: var(--ink); }
+  .progress span.now { background: var(--accent); }
+
+  main { position: relative; flex: 1; }
+  #map { position: absolute; inset: 0; background: var(--bg); cursor: crosshair; }
+  .leaflet-container { font-family: inherit; background: #dfe7ea; }
+  @media (prefers-color-scheme: dark) { .leaflet-container { background: #0e1114; } }
+
+  .panel { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+    width: min(440px, calc(100% - 32px)); background: var(--card); border-radius: 18px;
+    box-shadow: var(--shadow); padding: 16px 18px; z-index: 600; border: 1px solid var(--line); }
+  .kicker { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 500; }
+  .place { font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin: 2px 0 2px; line-height: 1.15; }
+  .country { color: var(--muted); font-size: 15px; }
+  .row { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
+  .hint { color: var(--muted); font-size: 14px; flex: 1; }
+  button { font: inherit; font-weight: 700; border: 0; border-radius: 12px; padding: 12px 18px;
+    background: var(--accent); color: var(--accent-ink); cursor: pointer; font-size: 16px; transition: transform .08s, opacity .2s; }
+  button:active { transform: scale(.97); }
+  button:disabled { opacity: .35; cursor: not-allowed; }
+  button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+
+  .result-line { display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; }
+  .dist { font-size: 15px; color: var(--muted); }
+  .pts { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .bar { height: 8px; border-radius: 4px; background: var(--line); margin-top: 8px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; border-radius: 4px; transition: width .7s cubic-bezier(.2,.8,.2,1); }
+
+  .summary { position: absolute; inset: 0; z-index: 700; display: none; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: blur(4px); padding: 16px; }
+  .summary.show { display: flex; }
+  .summary .box { background: var(--card); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow);
+    padding: 22px; width: min(420px, 100%); }
+  .big { font-size: 54px; font-weight: 700; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .big small { font-size: 20px; color: var(--muted); font-weight: 500; }
+  .rounds { list-style: none; padding: 0; margin: 16px 0; }
+  .rounds li { display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--line); font-size: 15px; }
+  .rounds li b { font-variant-numeric: tabular-nums; }
+  .rounds li .sq { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; }
+  .toast { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg);
+    padding: 8px 14px; border-radius: 999px; font-size: 14px; z-index: 900; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+
+  .pin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+  .pin.guess { background: var(--accent); }
+  .pin.truth { background: var(--truth); }
+  .label-truth { background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
+    padding: 3px 8px; font-weight: 700; font-size: 13px; box-shadow: var(--shadow); white-space: nowrap; }
+  .leaflet-tooltip.label-truth::before { display: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 22s7-7.1 7-12.5A7 7 0 0 0 5 9.5C5 14.9 12 22 12 22Z" fill="var(--accent)"/><circle cx="12" cy="9.5" r="2.6" fill="var(--card)"/></svg>
+      Pin Drop
+    </div>
+    <div class="score-pill" id="total">0 pts</div>
+  </header>
+  <main>
+    <div id="map" aria-label="World map. Tap to place your guess."></div>
+    <div class="progress" id="progress"></div>
+    <div class="panel" id="panel"></div>
+    <div class="summary" id="summary"><div class="box" id="summaryBox"></div></div>
+    <div class="toast" id="toast"></div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function () {
+  // ---- Puzzle ----
+  var PLACES = [
+    { name: "Barranquilla", country: "Colombia",     lat: 10.9685, lng: -74.7813 },
+    { name: "Havana",       country: "Cuba",         lat: 23.1136, lng: -82.3666 },
+    { name: "Legazpi",      country: "Philippines",  lat: 13.1391, lng: 123.7438 },
+    { name: "Garoua",       country: "Cameroon",     lat:  9.3017, lng:  13.3921 },
+    { name: "Polokwane",    country: "South Africa", lat: -23.9045, lng: 29.4689 }
+  ];
+  var MAX = 1000;
+
+  // Full marks within 50 km, then exponential falloff (≈500 pts at ~1,100 km).
+  function scoreFor(km) {
+    if (km <= 50) return MAX;
+    return Math.round(MAX * Math.exp(-(km - 50) / 1500));
+  }
+  function haversine(a, b) {
+    var R = 6371, toRad = Math.PI / 180;
+    var dLat = (b.lat - a.lat) * toRad, dLng = (b.lng - a.lng) * toRad;
+    var s = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * toRad) * Math.cos(b.lat * toRad) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(s));
+  }
+  function tier(pts) { return pts >= 800 ? "good" : pts >= 400 ? "mid" : "bad"; }
+  function emoji(pts) { return pts >= 800 ? "🟩" : pts >= 400 ? "🟨" : "🟥"; }
+  function fmtKm(km) { return km < 10 ? km.toFixed(1) + " km" : Math.round(km).toLocaleString() + " km"; }
+
+  // ---- Map (no place labels, so the map doesn't give answers away) ----
+  var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  var map = L.map("map", {
+    worldCopyJump: true, zoomControl: false, attributionControl: true,
+    minZoom: 2, maxZoom: 7, zoomSnap: 0.5
+  }).setView([15, 10], 2);
+  L.control.zoom({ position: "topright" }).addTo(map);
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/" +
+    (dark ? "World_Dark_Gray_Base" : "World_Light_Gray_Base") + "/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 16,
+    attribution: "Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors"
+  }).addTo(map);
+
+  function pinIcon(cls) {
+    return L.divIcon({ className: "", html: '<div class="pin ' + cls + '"></div>', iconSize: [22, 22], iconAnchor: [11, 11] });
+  }
+
+  // ---- State ----
+  var round = 0, results = [], guess = null, guessMarker = null, revealLayer = L.layerGroup().addTo(map), locked = false;
+  var $ = function (id) { return document.getElementById(id); };
+
+  function renderProgress() {
+    $("progress").innerHTML = PLACES.map(function (_, i) {
+      return '<span class="' + (i < round ? "done" : i === round ? "now" : "") + '"></span>';
+    }).join("");
+    var total = results.reduce(function (s, r) { return s + r.pts; }, 0);
+    $("total").textContent = total.toLocaleString() + " pts";
+  }
+
+  function renderAsk() {
+    var p = PLACES[round];
+    $("panel").innerHTML =
+      '<div class="kicker">Round ' + (round + 1) + ' of ' + PLACES.length + '</div>' +
+      '<div class="place">' + p.name + '</div>' +
+      '<div class="country">' + p.country + '</div>' +
+      '<div class="row"><div class="hint" id="hint">Tap the map to drop your pin.</div>' +
+      '<button id="lock" disabled>Lock in</button></div>';
+    $("lock").onclick = lockIn;
+  }
+
+  function renderReveal(r) {
+    var last = round === PLACES.length - 1;
+    $("panel").innerHTML =
+      '<div class="kicker">' + r.place.name + ', ' + r.place.country + '</div>' +
+      '<div class="result-line"><div class="dist">' + fmtKm(r.km) + ' away</div>' +
+      '<div class="pts">+' + r.pts + '</div></div>' +
+      '<div class="bar"><i id="barFill" style="background:var(--' + tier(r.pts) + ')"></i></div>' +
+      '<div class="row"><div class="hint"></div><button id="next">' + (last ? "See results" : "Next place") + '</button></div>';
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      $("barFill").style.width = (r.pts / MAX * 100) + "%";
+    }); });
+    $("next").onclick = last ? showSummary : nextRound;
+  }
+
+  map.on("click", function (e) {
+    if (locked) return;
+    guess = e.latlng.wrap();
+    if (guessMarker) guessMarker.setLatLng(e.latlng);
+    else guessMarker = L.marker(e.latlng, { icon: pinIcon("guess"), keyboard: false }).addTo(map);
+    $("lock").disabled = false;
+    $("hint").textContent = "Tap again to move it.";
+  });
+
+  function lockIn() {
+    if (!guess) return;
+    locked = true;
+    var p = PLACES[round];
+    var km = haversine({ lat: guess.lat, lng: guess.lng }, p);
+    var pts = scoreFor(km);
+    var r = { place: p, km: km, pts: pts };
+    results.push(r);
+
+    // Draw truth on the same world copy as the guess marker.
+    var g = guessMarker.getLatLng();
+    var tLng = p.lng;
+    while (tLng - g.lng > 180) tLng -= 360;
+    while (g.lng - tLng > 180) tLng += 360;
+    var t = L.latLng(p.lat, tLng);
+    L.polyline([g, t], { color: dark ? "#f1eee8" : "#1d1b18", weight: 2, dashArray: "6 6", opacity: .8 }).addTo(revealLayer);
+    L.marker(t, { icon: pinIcon("truth"), keyboard: false }).addTo(revealLayer)
+      .bindTooltip(p.name, { permanent: true, direction: "top", offset: [0, -12], className: "label-truth" });
+    map.flyToBounds(L.latLngBounds([g, t]).pad(0.5), { maxZoom: 6, duration: 0.8, paddingBottomRight: [0, 140] });
+
+    renderProgress();
+    renderReveal(r);
+  }
+
+  function nextRound() {
+    round++;
+    guess = null; locked = false;
+    if (guessMarker) { map.removeLayer(guessMarker); guessMarker = null; }
+    revealLayer.clearLayers();
+    map.flyTo([15, 10], 2, { duration: 0.8 });
+    renderProgress();
+    renderAsk();
+  }
+
+  function shareText(total) {
+    return "Pin Drop " + total.toLocaleString() + "/" + (MAX * PLACES.length).toLocaleString() + "\n" +
+      results.map(function (r) { return emoji(r.pts); }).join("") + "\n" + location.href;
+  }
+
+  function showSummary() {
+    var total = results.reduce(function (s, r) { return s + r.pts; }, 0);
+    $("panel").style.display = "none";
+    $("summaryBox").innerHTML =
+      '<div class="kicker">Final score</div>' +
+      '<div class="big">' + total.toLocaleString() + ' <small>/ ' + (MAX * PLACES.length).toLocaleString() + '</small></div>' +
+      '<ul class="rounds">' + results.map(function (r) {
+        return '<li><span><i class="sq" style="background:var(--' + tier(r.pts) + ')"></i>' + r.place.name +
+          ' <span style="color:var(--muted)">· ' + fmtKm(r.km) + '</span></span><b>' + r.pts + '</b></li>';
+      }).join("") + '</ul>' +
+      '<div class="row"><button class="secondary" id="again">Play again</button>' +
+      '<button id="share" style="flex:1">Share result</button></div>';
+    $("summary").classList.add("show");
+    $("again").onclick = restart;
+    $("share").onclick = function () {
+      var text = shareText(total);
+      if (navigator.share) { navigator.share({ text: text }).catch(function () {}); return; }
+      navigator.clipboard.writeText(text).then(function () { toast("Copied to clipboard"); },
+        function () { toast("Couldn't copy"); });
+    };
+  }
+
+  function restart() {
+    round = 0; results = []; guess = null; locked = false;
+    if (guessMarker) { map.removeLayer(guessMarker); guessMarker = null; }
+    revealLayer.clearLayers();
+    $("summary").classList.remove("show");
+    $("panel").style.display = "";
+    map.setView([15, 10], 2);
+    renderProgress();
+    renderAsk();
+  }
+
+  var toastTimer;
+  function toast(msg) {
+    var el = $("toast"); el.textContent = msg; el.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.classList.remove("show"); }, 1600);
+  }
+
+  renderProgress();
+  renderAsk();
+})();
+</script>
+</body>
+</html>
