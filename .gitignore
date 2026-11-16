@@ -1,4 +1,7 @@
 _site/
+_research/
+_data/
+_drafts/
 images/posts/*.tex
 images/posts/*.pdf
 images/posts/*.sty
@@ -7,3 +10,4 @@ _source/*_cache
 vendor/
 .bundle/
 .jekyll-metadata
+markdown_generator/

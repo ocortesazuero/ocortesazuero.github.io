@@ -50,7 +50,7 @@ atom_feed:
   path                   : # blank (default) uses feed.xml
 
 # SEO Related
-google_site_verification :
+google_site_verification : "lTNfC15_Q3RWRymAeLJOC5WgynwwEqtcbpOwTmq5Eso"
 bing_site_verification   :
 alexa_site_verification  :
 yandex_site_verification :
@@ -64,13 +64,16 @@ facebook:
   username               :
   app_id                 :
   publisher              :
-og_image                 : profile.jpeg # Open Graph/Twitter default site image
+og_image                 : # Open Graph/Twitter default site image
 # For specifying social profiles
 # - https://developers.google.com/structured-data/customize/social-profiles
 social:
-  type                   : # Person or Organization (defaults to Person)
+  type                   : Person
   name                   : # If the user or organization name differs from the site's name
   links: # An array of links to social media profiles
+  - "https://orcid.org/0009-0004-7782-8129"
+  - "https://scholar.google.com/citations?user=LMxpmxcAAAAJ&hl=en"
+  - "https://github.com/ocortesazuero"
 
 
 # Analytics
@@ -79,7 +82,7 @@ analytics:
   google:
     tracking_id          : 
   goatcounter:
-    code		 : jayrobwilliams
+    code		 : ocortesazuero
 
 
 # Site Author
